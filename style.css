@@ -1,0 +1,85 @@
+body {
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+}
+textarea {
+    font-family: Consolas, Courier New;
+    font-size: 12px;
+}
+.console {
+    width: 99%; height: 300px; border: 1px solid black; padding: 3px;
+}
+#Output {
+    background: black; color: white;
+}
+#Debug {
+    background: black; color: #3F3;
+}
+#SourceCode {
+    background: Gainsboro;
+    color: #336;
+}
+#Input, #Debug {
+    height: 80px;
+}
+.consolecontainer {
+    padding: 5px;
+}
+
+
+html,body{margin:0;padding:0}
+body{font: 76% arial,sans-serif}
+p{margin:0 10px 10px}
+a{color: #006;}
+div#header{}
+div#header div{
+    height:40px;line-height:40px;margin:0;
+    padding-left:10px;background: #B9CAFF;color: black;
+}
+div#header h1 {
+    margin-top: 0;
+}
+div#header h3 {
+    margin-top: 0;
+    margin-bottom: 0; padding-bottom: 0;
+}
+div#content p{line-height:1.4}
+div#navigation{}
+div#extra{background:#DDF}
+div#footer{background: #333;color: #FFF}
+div#footer p{margin:0;padding:5px 10px}
+div#footer a{display:inline;padding:0;color: #C6D5FD}
+
+div#wrapper{float:right;width:100%}
+div#content{margin: 0 44% 0 175px}
+div#navigation{float:right;width:44%;margin-right:-100%}
+div#extra{float:right;width:175px;margin-right:-175px}
+div#footer{ width:100%}
+div#extra .list a {
+    display: block;
+    padding: 0px 0px 5px 0;
+}
+
+button div {
+    background: left center no-repeat;
+    padding-left: 24px;
+    line-height: 24px;
+}
+.page_white div {
+    background-image: url(icons/page_white.png);
+}
+.run div {
+    background-image: url(icons/accept.png);
+}
+.stop div {
+    background-image: url(icons/stop.png);
+}
+.bug div {
+    background-image: url(icons/bug.png);
+}
+.pause div {
+    background-image: url(icons/control_pause.png);
+}
+.play div {
+    background-image: url(icons/control_play.png);
+}

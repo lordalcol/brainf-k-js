@@ -1,0 +1,608 @@
+<html>
+<head>
+    <title>Brainfuck JS (interpreter & debugger)</title>
+    <script type="text/javascript" src="string_brainfuckit.js"></script>
+    <link rel="stylesheet" type="text/css" href="style.css"></link>
+</head>
+<script type="text/javascript">
+var sourceIndex;    // index of parser of Source Code
+var B;              // program Buffer
+var p;              // program buffer Pointer
+var W;              // parser While buffer
+var skipW;          // parser skip While counter
+var SourceCode;     // SourceCode Stream
+var Output;         // Output Stream
+var Input;          // Input Stream
+var InputIndex;     // Input Stream index
+var InputType;      // type of Input Stream (prompt or input box)
+var Debug;
+var initialized = false;
+
+function brainfuck(step) {
+    document.getElementById('pausebtn').className='pause';
+    brainfuck_initDebug();
+    if (!initialized) {
+        // initialize all
+        brainfuck_initStreams();
+        sourceIndex  = 0;
+        B  = [];
+        p  = 0;
+        W = [];
+        skipW = 0;
+        initialized = true;
+        Utils.clearText('Output'); Utils.clearText('Debug');
+    }
+    if (step) {
+        brainfuck_cycle();
+    } else {
+        setExecuteDisabled(true); 
+        Thread.fun = brainfuck_cycle;
+        Thread.start();
+    }
+}
+
+function brainfuck_initStreams() {
+    // GET STREAMS OF CODE, OUTPUT AND INPUT
+    Output = document.getElementById('Output');
+    SourceCode  = document.getElementById('SourceCode');
+    // CHECK WHAT KIND OF INPUT WANTED
+    if (!document.getElementById('InputCheck').checked) {
+        InputType = 'prompt';   // this will prompt the user until press Cancel
+        Input = '';
+        InputIndex = 0;
+    } else {
+        InputType = 'input box';    // this will use input box data until end
+        Input = document.getElementById('Input').value;
+        InputIndex = 0;
+    }
+    document.getElementById('Debug').value = '';
+    if (document.getElementById('DebugCheck').checked) {
+        Thread.operation_per_cycle = 1;
+        Debug = document.getElementById('Debug');
+    } else {
+        Thread.operation_per_cycle = 999;
+        Debug = false;
+    }
+}
+
+function brainfuck_initDebug() {
+    document.getElementById('Debug').value = '';
+    if (document.getElementById('DebugCheck').checked) {
+        Thread.operation_per_cycle = 1;
+        Debug = document.getElementById('Debug');
+    } else {
+        Thread.operation_per_cycle = 999;
+        Debug = false;
+    }
+}
+
+function brainfuck_cycle() {
+    writeDebug();
+    if (sourceIndex < SourceCode.value.length) {
+        switch(SourceCode.value[sourceIndex]) {
+            case '#':
+                activeDebug(true);
+                brainfuck_pause();
+            break;
+            case '>': 
+                if (!skipW) {
+                    p++;
+                }
+            break;
+            case '<':
+                if (!skipW) {
+                    p--;
+                }
+            break;
+            case '+':
+                if (!skipW) {
+                    Utils.initArrayPosition(B,p);
+                    B[p]++;
+                }
+            break;
+            case '-':
+                if (!skipW) {
+                    Utils.initArrayPosition(B,p);
+                    B[p]--;
+                }
+            break;
+            case '.':
+                if (!skipW) {
+                    Utils.initArrayPosition(B,p);
+                    Utils.putchar(Utils.Chr(B[p]));
+                }
+            break;
+            case ',':
+                if (!skipW) {
+                    var c = Utils.getchar();
+                    if (!c) {
+                        alert('Program terminated: end of input stream!');
+                        brainfuck_terminated();
+                    }
+                    B[p] = c;
+                }
+            break;
+            case '[':
+                if (!skipW) {
+                    Utils.initArrayPosition(B,p);
+                    if (B[p]) {
+                        W.push(sourceIndex);
+                    } else {
+                        skipW++;
+                    }
+                } else {
+                    skipW++;
+                }
+            break;
+            case ']':
+                if (!skipW) {
+                    sourceIndex = W.pop();
+                    sourceIndex--;
+                } else {
+                    skipW--;
+                }
+            break;
+            default:
+        }
+        sourceIndex++;
+    } else {
+        brainfuck_terminated();
+    }
+};
+
+// program terminated event
+function brainfuck_terminated() {
+    initialized = false;
+    Thread.stop();
+    setExecuteDisabled(false);
+    Output.value += '\n\n';
+}
+
+// program pause
+function brainfuck_pause() {
+    if (Thread.STOP) {
+        brainfuck();
+    } else {
+        Thread.stop();
+        setExecuteDisabled(false);
+        document.getElementById('pausebtn').className='play';
+    }
+}
+
+// Thread singleton: avoids browser to lock and freeze
+var Thread = {
+    fun: function() {},
+    pause: 10,
+    STOP: true,
+    operation_per_cycle: 1,
+    start: function() {
+        Thread.STOP = false;
+        Thread.execute();
+    },
+    stop: function() {
+        Thread.STOP = true;
+    },
+    execute: function() {
+        if (Thread.STOP) { return; }
+        for (var c=0; c<Thread.operation_per_cycle; c++) {
+            if (Thread.STOP) { return; }
+            Thread.fun();
+        }
+        if (Thread.STOP) { return; }
+        setTimeout('Thread.execute()', Thread.pause);
+    }
+}
+
+var Utils = {
+    // Initilize an array element if it does not exists
+    initArrayPosition: function(arr,i) {
+        if (!arr[i]) {
+            arr[i] = 0;
+        }
+    },
+    // equivalent of PHP,C.. Chr function (converts integer to char)
+    Chr: function(ascii) {
+        return String.fromCharCode(ascii);
+    },
+    // writes a char to the Output stream
+    putchar: function(c) {
+        Output.value += c;
+    },
+    // gets a char from the Input stream
+    getchar: function() {
+        if (InputType=='prompt') {
+            // user Prompt dialog
+            if (InputIndex == Input.length) {
+                Input = window.prompt('Insert a char for input:\n(if you write more than one next chars will be used as input stream)');
+                InputIndex = 0;
+            }
+            if (!Input) { return; }  // InputStream terminated!
+            InputIndex++;
+            return Input.charCodeAt(InputIndex-1);
+        } else {
+            // Input box
+            InputIndex++;
+            if ((InputIndex-1) == Input.length) { return; } // InputStream terminated!
+            return Input.charCodeAt(InputIndex-1);
+        }
+    },
+    // clear a textarea
+    clearText: function(id) {
+        document.getElementById(id).value = '';
+        document.getElementById(id).focus();
+    }
+};
+// change disabled property of execute button
+function setExecuteDisabled(v) {
+    var b = document.getElementById('executebtn');
+    b.disabled = v;
+}
+// toggle one step button visibility
+function toggleOneStepButton() {
+    var b = document.getElementById('onestepbtn');
+    b.disabled = !document.getElementById('DebugCheck').checked;
+    var b = document.getElementById('pausebtn');
+    b.disabled = !document.getElementById('DebugCheck').checked;
+}
+function activeDebug(d) {
+    if (d) {
+        document.getElementById('DebugCheck').checked = true;
+        toggleOneStepButton();
+        Debug = document.getElementById('Debug');
+        writeDebug();
+    } else {
+        document.getElementById('DebugCheck').checked = false;
+        toggleOneStepButton();
+        Debug = document.getElementById('Debug');
+        Debug.value = '';
+        Debug = false;
+    }
+}
+// write debug info
+function writeDebug() {
+    if (Debug) {
+        SourceCode.focus();
+        SourceCode.setSelectionRange(sourceIndex,sourceIndex+1);
+        var d = Debug;
+        d.value = '';
+        d.value += 'BUFFER\t\t';
+        for (var j=0; j<B.length; j++) {
+            if (!B[j]) {
+                d.value += '0';
+            } else {
+                d.value += B[j]
+            }
+            d.value += '\t';
+        }
+        d.value += '\n      \t\t';
+        for (var j=0; j<p; j++) {
+            d.value += '\t';
+        }
+        d.value += '^\n';
+        var cmd = SourceCode.value[sourceIndex];
+        if (cmd=='\n') { cmd = '\\n'; }
+        d.value += 'SOURCE POSITION:\t' + sourceIndex + '\n';
+        d.value += 'NEXT CMD:\t\t' + cmd + '\n';
+        d.value += 'SKIP WHILE:\t\t' + (skipW>0);
+    }
+}
+
+function loadSample(id) {
+    var _s = document.getElementById('SourceCode');
+    var _i = document.getElementById('Input');
+
+    // get source code
+    var src = document.getElementById(id+'_source');
+    if (!src) { src = ''; }
+    else { src = src.value; }
+    _s.value = src;
+    // get input box
+    var input = document.getElementById(id+'_input');
+    if (!input) { input = ''; document.getElementById('InputCheck').checked = false; }
+    else { input = input.value; document.getElementById('InputCheck').checked = true; }
+    _i.value = input;
+    
+    _s.blur();
+    _i.blur();
+}
+</script>
+
+</head>
+<body>
+<div id="container">
+<div id="header">
+    <div>
+        <h3 style="float: right; padding-right: 10px;">by <a href="http://www.lordalcol.com/">lordalcol.com</a></h3>
+        <h1 style="float: left;">Brainfuck JS (interpreter & debugger)</h1>
+        <span style="float: left; margin-left: 50px;">brainfuck programming language | interpreter | debugger | javascript threading</span>
+    </div>
+</div>
+
+<div id="wrapper">
+<div id="content">
+    <div class="consolecontainer">
+        Source code (Brainfuck):<br />
+        <textarea id="SourceCode" class="console"></textarea>
+    </div>
+    <div class="consolecontainer">
+        Input box: (<input type="checkbox" id="InputCheck" /> use this input box instead of prompt)<br />
+        <textarea id="Input" class="console"></textarea>
+    </div>
+    <div class="consolecontainer">
+        <button style="float: right;" class="stop" onclick="brainfuck_terminated(); alert('Program terminated by user!')"><div>stop thread</div></button>
+        <button id="executebtn" style="float: right;" class="run" onclick="activeDebug(false); brainfuck()"><div>run</div></button>
+        <button class="page_white" onclick="Utils.clearText('SourceCode')"><div>clear source code</div></button>
+        <button class="page_white" onclick="Utils.clearText('Input')"><div>clear input box</div></button>
+    </div>
+</div>
+</div>
+<div id="navigation">
+    <div class="consolecontainer">
+        Output stream:
+        <textarea id="Output" class="console"></textarea>
+    </div>
+    <div class="consolecontainer">
+        Debug info: (<input type="checkbox" id="DebugCheck" onclick="toggleOneStepButton()" /> activate debug) <strong style="color: blue;"> - Use # to set breakpoints</strong><br />
+        <textarea id="Debug" class="console"></textarea>
+    </div>
+    <div class="consolecontainer">
+        <button style="float: right;" class="page_white" onclick="Utils.clearText('Output'); Utils.clearText('Debug');"><div>clear output & debug</div></button>
+        <button id="pausebtn" class="play" onclick="brainfuck_pause()" disabled="true"><div>play/pause</div></button>
+        <button id="onestepbtn" class="bug" onclick="brainfuck(1)" disabled="true"><div>one step</div></button>
+    </div>
+</div>
+<div id="extra">
+    <div style="padding: 5px;">
+        <h3>Examples</h3>
+        <p style="color: green">Load and press run</p>
+        <p><small>sources from <a href="http://en.wikipedia.org/wiki/Brainfuck">wikipedia</a></small></p>
+        <div class="list">
+        <a href="#" onclick="loadSample('helloworld'); return false;">Hello world!</a>
+        <a href="#" onclick="loadSample('addition'); return false;">Addition</a>
+        <a href="#" onclick="loadSample('multiplication'); return false;">Multiplication</a>
+        <a href="#" onclick="loadSample('division'); return false;">Division</a>
+        <a href="#" onclick="loadSample('uppercase'); return false;">Uppercase a string</a>
+        <br />
+        <p><small>Try debugging some program</small></p>
+        <a href="#" onclick="loadSample('breaksample'); return false;">Breakpoint sample</a>
+        <br />
+        <p><small>some brainfuck fluff by <a href="http://www.hevanet.com/cristofd/brainfuck/">daniel b cristofani</a></small></p>
+        <a href="#" onclick="loadSample('ctranslator'); return false;">Brainfuck to C translator</a>
+        <a href="#" onclick="loadSample('bfinterpreter'); return false;">Brainfuck interpreter</a>
+        <a href="#" onclick="loadSample('factorial'); return false;">Factorial</a>
+        <a href="#" onclick="loadSample('numwarp'); return false;">Number graphic display</a>
+        <a href="#" onclick="loadSample('squares'); return false;">Square numbers from 1 to 10000</a>
+        </div>
+        <br />
+        <p><small>text to brainfuck code by <a href="http://www.yellowpecora.com/">marco bacer</a></small></p>
+        <a href="#" onclick="document.getElementById('SourceCode').value = brainfuckit(window.prompt('Please insert some text')); return;">convert text to brainfuck</a>
+    </div>
+</div>
+<div style="clear: both;"></div>
+<div id="footer">
+<p>
+Created by Lorenzo Dal Col (2008) - lorenzo.dalcol@gmail.com - <a href="http://www.lordalcol.com/">www.lordalcol.com</a>
+</p>
+</div>
+</div>
+<div style="display: none;">
+<!-- helloworld -->
+<textarea id="helloworld_source">
+++++++++++
+[
+   >+++++++>++++++++++>+++>+<<<<-
+]
+>++. Loop iniziale (dopo viene stampata una H)
+>+. e
++++++++. l
+. l
++++. o
+>++.
+<<+++++++++++++++.
+>.
++++.
+------.
+--------.
+>+.
+>.
+</textarea>
+<!-- addition -->
+<textarea id="addition_source">
+,>++++++[<-------->-],,[<+>-]<.
+</textarea>
+<textarea id="addition_input">
+3+2
+</textarea>
+<!-- multiplication -->
+<textarea id="multiplication_source">
+,>,,>++++++++[<------<------>>-]
+<<[>[>+>+<<-]>>[<<+>>-]<<<-]
+>>>++++++[<++++++++>-]<.
+</textarea>
+<textarea id="multiplication_input">
+2*4
+</textarea>
+<!-- division -->
+<textarea id="division_source">
+,>,,>++++++[-<--------<-------->>] Store 2 numbers from keyboard in (0) and (1); and subtract 48 from each
+<<[                               This is the main loop which continues until the dividend in (0) is zero
+>[->+>+<<]                        Destructively copy the divisor from (1) to (2) and (3); setting (1) to zero
+>[-<<-                            Subtract the divisor in (2) from the dividend in (0); the difference is stored in (0) and (2) is cleared
+[>]>>>[<[>>>-<<<[-]]>>]<<]        If the dividend in (0) is zero; exit the loop
+>>>+                              Add one to the quotient in (5)
+<<[-<<+>>]                        Destructively copy the divisor in (3) to (1)
+<<<]                              Move the stack pointer to (0) and go back to the start of the main loop
+>[-]>>>>[-<<<<<+>>>>>]            Destructively copy the quotient in (5) to (0) (not necessary; but cleaner)
+<<<<++++++[-<++++++++>]<.         Add 48 and print result
+</textarea>
+<textarea id="division_input">
+6/2
+</textarea>
+<!-- uppercase -->
+<textarea id="uppercase_source">
+,----------[----------------------.,----------]
+</textarea>
+<textarea id="uppercase_input">
+lordalcol
+</textarea>
+<!-- ctranslator -->
+<textarea id="ctranslator_source">
++++[>+++++<-]>>+<[>>++++>++>+++++>+++++>+>>+<++[++<]>---]
+
+>++++.>>>.+++++.>------.<--.+++++++++.>+.+.<<<<---.[>]<<.<<<.-------.>++++.
+<+++++.+.>-----.>+.<++++.>>++.>-----.
+
+<<<-----.+++++.-------.<--.<<<.>>>.<<+.>------.-..--.+++.-----<++.<--[>+<-]
+>>>>>--.--.<++++.>>-.<<<.>>>--.>.
+
+<<<<-----.>----.++++++++.----<+.+++++++++>>--.+.++<<<<.[>]<.>>
+
+,[>>+++[<+++++++>-]<[<[-[-<]]>>[>]<-]<[<+++++>-[<+++>-[<-->-[<+++>-
+[<++++[>[->>]<[>>]<<-]>[<+++>-[<--->-[<++++>-[<+++[>[-[-[-[->>]]]]<[>>]<<-]
+>[<+>-[<->-[<++>-[<[-]>-]]]]]]]]]]]]]
+
+<[
+    -[-[>+<-]>]
+    <[<<<<.>+++.+.+++.-------.>---.++.<.>-.++<<<<.[>]>>>>>>>>>]
+    <[[<]>++.--[>]>>>>>>>>]
+    <[<<++..-->>>>>>]
+    <[<<..>>>>>]
+    <[<<..-.+>>>>]
+    <[<<++..---.+>>>]
+    <[<<<.>>.>>>>>]
+    <[<<<<-----.+++++>.----.+++.+>---.<<<-.[>]>]
+    <[<<<<.-----.>++++.<++.+++>----.>---.<<<.-[>]]
+    <[<<<<<----.>>.<<.+++++.>>>+.++>.>>]
+    <.>
+]>
+,]
+
+<<<<<.<+.>++++.<----.>>---.<<<-.>>>+.>.>.[<]>++.[>]<.
+>
+</textarea>
+<textarea id="ctranslator_input">
+,++.>,--.
+</textarea>
+<div id="ctranslator_info">
+<pre>
+[Translates brainfuck to C. Assumes no-change-on-EOF or EOF->0.
+Generated C does no-change-on-EOF, and uses unistd.h read and write calls.
+Daniel B Cristofani (cristofdathevanetdotcom)
+http://www.hevanet.com/cristofd/brainfuck/]
+</pre>
+<!-- bfinterpreter -->
+<textarea id="bfinterpreter_source">
+>>>+[[-]>>[-]++>+>+++++++[<++++>>++<-]++>>+>+>+++++[>++>++++++<<-]+>>>,<++[[>[
+->>]<[>>]<<-]<[<]<+>>[>]>[<+>-[[<+>-]>]<[[[-]<]++<-[<+++++++++>[<->-]>>]>>]]<<
+]<]<[[<]>[[>]>>[>>]+[<<]<[<]<+>>-]>[>]+[->>]<<<<[[<<]<[<]+<<[+>+<<-[>-->+<<-[>
++<[>>+<<-]]]>[<+>-]<]++>>-->[>]>>[>>]]<<[>>+<[[<]<]>[[<<]<[<]+[-<+>>-[<<+>++>-
+[<->[<<+>>-]]]<[>+<-]>]>[>]>]>[>>]>>]<<[>>+>>+>>]<<[->>>>>>>>]<<[>.>>>>>>>]<<[
+>->>>>>]<<[>,>>>]<<[>+>]<<[+<<]<]
+
+input a brainfuck program and its input separated by an exclamation point
+</textarea>
+<textarea id="bfinterpreter_input">
+,.+.>,++.>,+++.<<+++.+.
+
+!000
+</textarea>
+<div id="bfinterpreter_info">
+<pre>
+[input a brainfuck program and its input, separated by an exclamation point.
+Daniel B Cristofani (cristofdathevanetdotcom)
+http://www.hevanet.com/cristofd/brainfuck/]
+</pre>
+</div>
+<!-- factorial -->
+<textarea id="factorial_source">
+>++++++++++>>>+>+[>>>+[-[<<<<<[+<<<<<]>>[[-]>[<<+>+>-]<[>+<-]<[>+<-[>+<-[>
++<-[>+<-[>+<-[>+<-[>+<-[>+<-[>+<-[>[-]>>>>+>+<<<<<<-[>+<-]]]]]]]]]]]>[<+>-
+]+>>>>>]<<<<<[<<<<<]>>>>>>>[>>>>>]++[-<<<<<]>>>>>>-]+>>>>>]<[>++<-]<<<<[<[
+>+<-]<<<<]>>[->[-]++++++[<++++++++>-]>>>>]<<<<<[<[>+>+<<-]>.<<<<<]>.>>>>]
+
+This program doesn't terminate; you will have to kill it
+</textarea>
+<div id="factorial_info">
+<pre>
+This program doesn't terminate; you will have to kill it.
+Daniel B Cristofani (cristofdathevanetdotcom)
+http://www.hevanet.com/cristofd/brainfuck/
+</pre>
+</div>
+<!-- numwarp -->
+<textarea id="numwarp_source">
+>>>>+>+++>+++>>>>>+++[
+  >,+>++++[>++++<-]>[<<[-[->]]>[<]>-]<<[
+    >+>+>>+>+[<<<<]<+>>[+<]<[>]>+[[>>>]>>+[<<<<]>-]+<+>>>-[
+      <<+[>]>>+<<<+<+<--------[
+        <<-<<+[>]>+<<-<<-[
+          <<<+<-[>>]<-<-<<<-<----[
+            <<<->>>>+<-[
+              <<<+[>]>+<<+<-<-[
+                <<+<-<+[>>]<+<<<<+<-[
+                  <<-[>]>>-<<<-<-<-[
+                    <<<+<-[>>]<+<<<+<+<-[
+                      <<<<+[>]<-<<-[
+                        <<+[>]>>-<<<<-<-[
+                          >>>>>+<-<<<+<-[
+                            >>+<<-[
+                              <<-<-[>]>+<<-<-<-[
+                                <<+<+[>]<+<+<-[
+                                  >>-<-<-[
+                                    <<-[>]<+<++++[<-------->-]++<[
+                                      <<+[>]>>-<-<<<<-[
+                                        <<-<<->>>>-[
+                                          <<<<+[>]>+<<<<-[
+                                            <<+<<-[>>]<+<<<<<-[
+                                              >>>>-<<<-<-
+  ]]]]]]]]]]]]]]]]]]]]]]>[>[[[<<<<]>+>>[>>>>>]<-]<]>>>+>>>>>>>+>]<
+]<[-]<<<<<<<++<+++<+++[
+  [>]>>>>>>++++++++[<<++++>++++++>-]<-<<[-[<+>>.<-]]<<<<[
+    -[-[>+<-]>]>>>>>[.[>]]<<[<+>-]>>>[<<++[<+>--]>>-]
+    <<[->+<[<++>-]]<<<[<+>-]<<<<
+  ]>>+>>>--[<+>---]<.>>[[-]<<]<
+]
+</textarea>
+<textarea id="numwarp_input">
+123 - abc
+
+</textarea>
+<div id="numwarp_info">
+<pre>
+[Enter a number using ()-./0123456789abcdef and space, and hit return.
+Daniel B Cristofani (cristofdathevanetdotcom)
+http://www.hevanet.com/cristofd/brainfuck/]
+</pre>
+</div>
+<!-- squares -->
+<textarea id="squares_source">
+++++[>+++++<-]>[<+++++>-]+<+[
+    >[>+>+<<-]++>>[<<+>>-]>>>[-]++>[-]+
+    >>>+[[-]++++++>>>]<<<[[<++++++++<++>>-]+<.<[>----<-]<]
+    <<[>>>>>[>>>[-]+++++++++<[>-<-]+++++++++>[-[<->-]+[<<<]]<[>+<-]>]<<-]<<-
+]
+
+Outputs square numbers from 0 to 10000
+</textarea>
+<div id="squares_info">
+<pre>
+[Outputs square numbers from 0 to 10000.
+Daniel B Cristofani (cristofdathevanetdotcom)
+http://www.hevanet.com/cristofd/brainfuck/]
+</pre>
+<!-- breaksample -->
+<textarea id="breaksample_source">
+++++++++++
+[>+++++++>++++++++++>+++>+<<<<-]
+>++.>+.+++++++.#.+++.>++.
+<<+++++++++++++++.>.+++.------.--------.>+.>.
+
+This program will pause on breakpoint;
+Then you can debug it step by step!
+
+You can set breakpoints with #
+</textarea>
+</div>
+</div>
+</body>
+</html>
