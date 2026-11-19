@@ -56,3 +56,7 @@ The build uses relative paths, so you can host `dist/` from any static host or s
 ## Credits
 
 Example programs from [Wikipedia](https://en.wikipedia.org/wiki/Brainfuck), [Daniel B. Cristofani](https://brainfuck.org/) (the files in `src/samples/` are under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), as noted in their headers) and Erik Bosman (Mandelbrot).
+
+## License
+
+The code is under the [MIT License](LICENSE). The example programs in `src/samples/` keep their own licences, listed under Credits.

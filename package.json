@@ -2,6 +2,7 @@
   "name": "brainfuck-js",
   "version": "2.0.0",
   "description": "Brainfuck interpreter and step debugger that runs in the browser.",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {
