@@ -1,6 +1,8 @@
 # Brainfuck JS
 
-A Brainfuck interpreter and step debugger that runs in the browser. Originally written in 2008, rebuilt in 2026 with Vite and TypeScript.
+**[Live demo](https://lorenzodalcol.com/personal-projects/brainfuck/)**
+
+A Brainfuck interpreter and step debugger that runs in the browser. Originally written in 2008, restored in 2026 with Vite and TypeScript.
 
 ## Features
 
